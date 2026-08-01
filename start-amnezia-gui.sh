@@ -1,0 +1,1 @@
+SOCKS_PORT=1081 nix run . -L 2>&1 | tee /tmp/amnezia-gui-flake.log
