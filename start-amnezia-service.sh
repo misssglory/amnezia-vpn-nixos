@@ -1,0 +1,1 @@
+ sudo ./result/bin/AmneziaVPN-service 2>&1 | tee /tmp/amnezia-daemon-flake.log
