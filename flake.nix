@@ -24,7 +24,6 @@
         iptables
         procps
         iproute2
-        sudo
         coreutils
         gnugrep
         systemd
@@ -38,7 +37,6 @@
           procps
           iproute2
           systemd
-          sudo
           gnugrep
           microsocks
           curl
@@ -50,7 +48,9 @@
           UNIT="amnezia-vpn-flake.service"
           GUI="${amnezia}/bin/AmneziaVPN"
           SERVICE="${amnezia}/bin/AmneziaVPN-service"
-          DAEMON_PATH="${daemonPath}:/run/current-system/sw/bin"
+          # The Nix store cannot provide setuid sudo. Use NixOS's root-owned wrapper.
+          SUDO="/run/wrappers/bin/sudo"
+          DAEMON_PATH="/run/wrappers/bin:${daemonPath}:/run/current-system/sw/bin"
 
           SOCKS_HOST="''${SOCKS_HOST:-127.0.0.1}"
           SOCKS_PORT="''${SOCKS_PORT:-1081}"
@@ -123,7 +123,7 @@
                 return 0
               fi
               echo "Replacing an older AmneziaVPN service with version ${amnezia.version}..."
-              sudo systemctl stop "$UNIT"
+              "$SUDO" systemctl stop "$UNIT"
             elif pgrep -f '(^|/)AmneziaVPN-service([[:space:]]|$)' >/dev/null 2>&1; then
               echo "ERROR: another AmneziaVPN-service process is already running." >&2
               echo "Stop the daemon you started from the old terminal before switching." >&2
@@ -131,9 +131,13 @@
             fi
 
             echo "Starting AmneziaVPN ${amnezia.version} as a systemd transient service..."
-            sudo -v
-            sudo systemctl reset-failed "$UNIT" >/dev/null 2>&1 || true
-            sudo systemd-run \
+            if [[ ! -x "$SUDO" ]]; then
+              echo "ERROR: NixOS sudo wrapper not found at $SUDO" >&2
+              exit 1
+            fi
+            "$SUDO" -v
+            "$SUDO" systemctl reset-failed "$UNIT" >/dev/null 2>&1 || true
+            "$SUDO" systemd-run \
               --unit=amnezia-vpn-flake \
               --collect \
               --description='AmneziaVPN (Nix flake)' \
@@ -186,6 +190,10 @@
           validate_proxy_options
           case "''${1:-start}" in
             start)
+              if (( EUID == 0 )); then
+                echo "ERROR: Run as your normal desktop user: ./start-amnezia.sh (without sudo)." >&2
+                exit 1
+              fi
               start_service
               run_gui
               ;;
@@ -203,7 +211,7 @@
               ;;
             stop)
               echo "Stopping transient service $UNIT (if present)..."
-              sudo systemctl stop "$UNIT"
+              "$SUDO" systemctl stop "$UNIT"
               ;;
             logs)
               journalctl --no-pager -u "$UNIT" -n 100

@@ -6,12 +6,12 @@ Built for `x86_64-linux` (the architecture used by the uploaded flake), with **n
 
 ```bash
 chmod +x start-amnezia.sh
-./start-amnezia.sh
+./start-amnezia.sh  # normal user; NEVER sudo ./start-amnezia.sh
 ```
 
 This builds/uses the `amnezia-vpn` package in `nixos-unstable`, starts its **matching root service** as a transient systemd unit, launches the GUI as your own user, and optionally runs a localhost-only `microsocks` SOCKS5 proxy on port **1081**.
 
-The `sudo` prompt is for the privileged daemon, **not** the GUI. Keep the launcher terminal open while using the GUI; the VPN service itself continues running after the GUI closes. The proxy ends when the GUI process ends.
+The NixOS setuid wrapper `/run/wrappers/bin/sudo` is used only to start the privileged daemon. Do **not** execute the entire launcher with `sudo`; the GUI must run inside your normal Wayland/X11 user session. The launcher avoids placing the unprivileged Nix-store `sudo` on PATH. Keep the launcher terminal open while using the GUI; the VPN service itself continues running after the GUI closes. The proxy ends when the GUI process ends.
 
 Do not keep the old `start-amnezia-service.sh` session running at the same time. Stop the manually launched service before running the new launcher.
 
